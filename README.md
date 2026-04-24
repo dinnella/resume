@@ -8,7 +8,6 @@ PDF and DOCX on every push to `main`. Local scripts are provided for offline bui
 | File | Purpose |
 |---|---|
 | `resume.md` | Master resume content — edit this |
-| `excella-resume.md` | Excella-formatted prose version (reference) |
 | `requirements.txt` | Pinned pip dependencies (`weasyprint`, `python-docx`) |
 | `templates/resume.css` | PDF stylesheet |
 | `scripts/makepdf.sh` | Local + CI PDF build script |
@@ -74,7 +73,7 @@ source .venv/bin/activate
 python3 scripts/build_docx_from_template.py
 
 # custom: [template] [source] [output]
-python3 scripts/build_docx_from_template.py "templates/Excella Resume Template 2026.docx" excella-resume.md MyResume_Excella.docx
+python3 scripts/build_docx_from_template.py "templates/Excella Resume Template 2026.docx" resume.md MyResume_Excella.docx
 ```
 
 ### CI build (GitHub Actions)
