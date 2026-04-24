@@ -11,7 +11,7 @@ Usage:
 
 Defaults:
     template : templates/Excella Resume Template 2026.docx
-    output   : templates/resume-skeleton.md
+    output   : templates/resume-skeleton-from-template.md
 """
 import sys
 from pathlib import Path
@@ -19,7 +19,7 @@ from docx import Document
 from docx.oxml.ns import qn
 
 TEMPLATE = sys.argv[1] if len(sys.argv) > 1 else "templates/Excella Resume Template 2026.docx"
-OUTPUT   = sys.argv[2] if len(sys.argv) > 2 else "templates/resume-skeleton.md"
+OUTPUT   = sys.argv[2] if len(sys.argv) > 2 else "templates/resume-skeleton-from-template.md"
 
 if not Path(TEMPLATE).exists():
     sys.exit(f"ERROR: file not found: {TEMPLATE}")

@@ -1,7 +1,7 @@
 # Build outputs
 *.pdf
 *.docx
-templates/resume-skeleton.md
+templates/resume-skeleton-from-template.md
 
 
 # Python

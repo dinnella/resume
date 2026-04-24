@@ -17,7 +17,7 @@ You have `execute` access. **Run the project scripts directly** rather than just
 | `scripts/build_docx_from_template.py` | Build a company-template DOCX | `python3 scripts/build_docx_from_template.py [template] [source] [output]` |
 | `scripts/generate_md_from_template.py` | Derive skeleton from a Word template | `python3 scripts/generate_md_from_template.py [template] [output.md]` |
 
-`style_reference_docx.py`, `postprocess_docx.py`, and `remove-ids.lua` are called automatically by `makedocx.sh` — do not invoke them directly.
+`style_reference_docx.py`, `postprocess_docx.py`, and `remove-ids.lua` are called automatically by `makedocx.sh`
 
 Before running any script, activate the venv if it exists:
 ```bash
@@ -50,13 +50,15 @@ python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 3. Import their existing resume into resume.md
+### 3. Get their content into resume.md
 
-Most users will already have a resume in another format. Help them convert it rather than starting from scratch.
+`resume.md` is the canonical source of truth. It must exist and contain their content before any output can be built.
 
-**Determine their starting format and extract the content:**
+**If `resume.md` already contains their own resume** (e.g. they maintain this repo themselves) — nothing to do, go to step 4.
 
-- **Word (.docx)** — read it directly with python-docx, then restructure:
+**If `resume.md` contains placeholder/someone else's content**, help them replace it. Determine their source format and extract the content:
+
+- **Word (.docx)** — read with python-docx:
   ```bash
   python3 -c "
   from docx import Document
@@ -64,13 +66,13 @@ Most users will already have a resume in another format. Help them convert it ra
       if p.text.strip(): print(repr(p.style.name), p.text)
   "
   ```
-- **PDF** — extract text with `pdftotext` (install via `apt`/`brew`):
+- **PDF** — extract with `pdftotext` (install via `apt`/`brew`):
   ```bash
   pdftotext their-resume.pdf -
   ```
-- **Google Docs / other** — ask the user to export as `.docx` or paste the plain text directly into chat
+- **Google Docs / other** — ask the user to export as `.docx` or paste the plain text into chat
 
-Once you have the raw content, use the existing `resume.md` as a structural reference (read it first) and rewrite it with the user's actual content. Follow this heading hierarchy:
+Write the converted content into `resume.md` using this heading hierarchy:
 - `#` = Full name (once, top of file)
 - `##` = Section headers (Experience, Education, Skills, etc.)
 - `###` = Company or institution name
@@ -79,43 +81,53 @@ Once you have the raw content, use the existing `resume.md` as a structural refe
 - `- bullet` = Accomplishment bullets
 - Markdown table = Skills section
 
-Never blank out `resume.md` before confirming the user is happy — write to a scratch file first if uncertain.
+Treat any external source file (the `.docx` or `.pdf` they provided) as read-only — extract from it, write to `resume.md`.
 
 ### 4. Choose an output format
 
-Once `resume.md` is populated, ask whether they want:
+Ask whether they want:
 
-- **Standard PDF/DOCX** (no special template) → go to step 5
-- **Company-specific template** (e.g. Excella `.docx`) → see "Using a Custom Word Template" below
+- **Standard PDF/DOCX** (generic styling) → go to step 5
+- **Company-specific template** (e.g. Excella `.docx`) → go to "Path B: Company Template" below
 
-### 5. Build locally to verify
-Run the build scripts directly and report the result:
+### 5. Build standard outputs (Path A)
 ```bash
 [ -d .venv ] && source .venv/bin/activate
-bash scripts/makepdf.sh
-bash scripts/makedocx.sh
+bash scripts/makepdf.sh     # → resume.pdf
+bash scripts/makedocx.sh    # → resume.docx
 ```
 
-## Using a Custom Word Template
+## Path B: Company Template
 
-If the user wants to apply a company-specific `.docx` template (like Excella's):
+`resume.md` is the **read-only source** for this workflow. All output goes to new files.
 
-1. Drop it in `templates/`
-2. Run the skeleton generator and read the output to understand what sections the template expects:
-   ```bash
-   python3 scripts/generate_md_from_template.py templates/YourTemplate.docx templates/skeleton.md
-   ```
-3. Read both `templates/skeleton.md` and `resume.md`, then identify any section name mismatches and fix them
-4. Build the template DOCX and confirm it succeeds:
-   ```bash
-   python3 scripts/build_docx_from_template.py templates/YourTemplate.docx resume.md output.docx
-   ```
+### Step 1 — Generate the skeleton
+Run the skeleton generator to discover what sections and structure the template expects:
+```bash
+python3 scripts/generate_md_from_template.py templates/YourTemplate.docx templates/resume-skeleton-from-template.md
+```
+Read `templates/resume-skeleton-from-template.md` and note its section names, heading format, and any template-only fields.
 
-If the output looks wrong, read `build_docx_from_template.py`'s `STYLE_MAP` to see how heading levels map to Word style names, then list the styles actually present in the template:
+### Step 2 — Draft the filled version
+Create a new file (e.g. `resume_excella.md`) by filling the skeleton with content from `resume.md`. Then present it to the user with a summary of gaps:
+
+- **Contact/branding fields** — flag any that may need a company-branded alternative (email domain, LinkedIn prefix, phone format)
+- **Template-only fields** — fields the skeleton has that `resume.md` doesn't (e.g. Clearance, Availability, Awards); mark these clearly as needing user input
+- **Section name differences** — note any label changes (e.g. "Skill Sets" vs "Skills") and confirm the mapping chosen
+- **Multi-role format** — if any employer has multiple roles, note which format was used and ask the user to confirm
+
+Ask the user to review and fill in flagged gaps before proceeding.
+
+### Step 3 — Build the template DOCX
+```bash
+python3 scripts/build_docx_from_template.py templates/YourTemplate.docx resume_excella.md output.docx
+```
+
+If the output looks wrong, read `build_docx_from_template.py`'s `STYLE_MAP` to see how heading levels map to Word style names, then list the styles in the template:
 ```bash
 python3 -c "from docx import Document; [print(s.name) for s in Document('templates/YourTemplate.docx').styles]"
 ```
-Reconcile any mismatches by editing `STYLE_MAP` directly.
+Reconcile mismatches by editing `STYLE_MAP` directly.
 
 ## Troubleshooting
 
@@ -129,7 +141,7 @@ Reconcile any mismatches by editing `STYLE_MAP` directly.
 
 ## Constraints
 
-- Always read `resume.md` before suggesting content edits — never overwrite the user's actual content
-- Do not modify `requirements.txt` versions without checking for breaking changes in WeasyPrint or python-docx changelogs first
-- Prefer editing `resume.md` over modifying scripts unless the user explicitly asks for pipeline changes
-- When suggesting style changes to the template DOCX builder, always verify the style name exists in the target template before recommending it
+- `resume.md` is the canonical source — read it freely, write to it only when importing a new user's content; in the template workflow, write to a new file and leave `resume.md` untouched
+- Check WeasyPrint and python-docx changelogs for breaking changes before updating any version in `requirements.txt`
+- Edit `resume.md` for content changes; touch the scripts only when the user explicitly asks for pipeline changes
+- Verify a style name exists in the target template before recommending it for `STYLE_MAP`
