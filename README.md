@@ -13,6 +13,7 @@ PDF and DOCX on every push to `main`. Local scripts are provided for offline bui
 | `scripts/makepdf.sh` | Local + CI PDF build script |
 | `scripts/makedocx.sh` | Local + CI DOCX build script (auto-generates `templates/reference.docx`) |
 | `scripts/build_docx_from_template.py` | Generate Excella-formatted DOCX from Word template |
+| `scripts/generate_md_from_template.py` | Generate a markdown skeleton from a Word template (run when template changes) |
 | `scripts/style_reference_docx.py` | Called by `makedocx.sh` — styles the pandoc reference doc |
 | `scripts/postprocess_docx.py` | Called by `makedocx.sh` — centers header block in DOCX output |
 | `scripts/remove-ids.lua` | Called by `makedocx.sh` — strips heading bookmark IDs (prevents `[` artifacts) |

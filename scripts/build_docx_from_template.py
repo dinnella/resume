@@ -1,33 +1,27 @@
 """
-Generate Resume from template (e.g. Excella Resume Template 2026.docx) and markdown source (resume.md).
+Generate a DOCX resume from a Word template and a markdown source file.
 Run from the repo root: python scripts/build_docx_from_template.py [template] [source] [output]
-  e.g.  python scripts/build_docx_from_template.py "templates/Excella Resume Template 2026.docx" excella-resume.md resume_from_template.docx
+  e.g.  python scripts/build_docx_from_template.py "templates/Excella Resume Template 2026.docx" resume.md resume_from_template.docx
 
 Markdown → Word style mapping
 ------------------------------
-  # Heading              → Name
-  **bold** (header)      → Job Position or Title
-  plain   (header)       → Normal
-  ## SECTION             → Section Header
-  **BOLD** (experience)  → Company          (resets paragraph counter)
-  *italic*               → Normal italic    (resets paragraph counter)
-  1st paragraph after role   → Normal
-  2nd+ paragraphs after role → Bullet Points
-  **partial bold** line  → Section Subheader  (EDUCATION only)
-  plain (EDUCATION)      → Company
-  plain (CERTIFICATIONS) → Certifications
-  plain (SKILL SETS)     → Skills
-  plain (SUMMARY/CLEARANCE) → Normal
+  # Name                 → Name  (fallback: Title → Heading 1 → Normal)
+  ## Section             → Section Header  (fallback: Heading 1 → Normal)
+  ### Company / Role     → Company  (fallback: Heading 2 → Normal)
+  #### Sub-role          → Normal italic
+  **bold** (pre-section) → Job Position or Title  (fallback: Subtitle → Normal)
+  **bold** (in body)     → Normal italic  (date lines etc.)
+  **partial bold**       → Normal
+  *italic*               → Normal italic
+  - bullet               → Bullet Points  (fallback: List Paragraph → Normal)
+  | table row |          → Skills  (fallback: Normal)
+  plain text             → Normal
 
-Template compatibility
-----------------------
-This script binds to paragraph style names in the template
-(e.g. 'Name', 'Company', 'Bullet Points', 'Section Header'). It will survive
-visual template updates as long as style names stay the same. If Excella
-renames or removes a style, update the matching style= argument here.
-
-To inspect current style names in any template revision:
-    python3 -c "from docx import Document; d = Document('Excella Resume Template 2026.docx'); print({p.style.name for p in d.paragraphs})"
+Style resolution
+----------------
+All named styles are resolved with fallbacks so the script degrades gracefully
+when a template uses different style names. Run generate_md_from_template.py to
+inspect the available styles in any template revision.
 """
 import re
 import sys
@@ -52,9 +46,29 @@ body = doc.element.body
 for child in list(body):
     body.remove(child)
 
+# ── Style resolution with fallbacks ─────────────────────────────────────────
+_available = {s.name for s in doc.styles}
+_FALLBACKS = {
+    "Name":                  ["Name", "Title", "Heading 1", "Normal"],
+    "Section Header":        ["Section Header", "Heading 1", "Normal"],
+    "Company":               ["Company", "Heading 2", "Normal"],
+    "Job Position or Title": ["Job Position or Title", "Subtitle", "Normal"],
+    "Bullet Points":         ["Bullet Points", "List Paragraph", "Normal"],
+    "Skills":                ["Skills", "Normal"],
+    "Certifications":        ["Certifications", "Normal"],
+    "Section Subheader":     ["Section Subheader", "Heading 3", "Normal"],
+}
+
+
+def resolve(style_name):
+    for candidate in _FALLBACKS.get(style_name, [style_name, "Normal"]):
+        if candidate in _available:
+            return candidate
+    return "Normal"
+
 
 def ap(text, style, italic=False):
-    para = doc.add_paragraph(style=style)
+    para = doc.add_paragraph(style=resolve(style))
     if text:
         run = para.add_run(text)
         if italic:
@@ -66,11 +80,17 @@ def strip_bold(text):
     return re.sub(r"\*\*([^*]*)\*\*", r"\1", text)
 
 
+def strip_links(text):
+    return re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", text)
+
+
+def clean(text):
+    return strip_links(strip_bold(text))
+
+
 lines = Path(SOURCE).read_text(encoding="utf-8").splitlines()
 
-in_header = True        # True until the first ## section is encountered
-current_section = None
-para_count = 0          # paragraphs since last Company or italic-role line
+in_header = True   # True until the first ## section; controls bold-line style
 
 for line in lines:
     s = line.strip()
@@ -85,50 +105,61 @@ for line in lines:
 
     # H2 → Section Header
     if s.startswith("## "):
-        current_section = s[3:]
-        ap(current_section, "Section Header")
+        ap(s[3:], "Section Header")
         in_header = False
-        para_count = 0
+        continue
+
+    # H3 → Company
+    if s.startswith("### "):
+        ap(clean(s[4:]), "Company")
+        continue
+
+    # H4 → italic sub-role / date range
+    if s.startswith("#### "):
+        ap(clean(s[5:]), "Normal", italic=True)
         continue
 
     # Fully bold line: **text**
     if s.startswith("**") and s.endswith("**"):
-        text = strip_bold(s)
+        text = clean(s)
         if in_header:
             ap(text, "Job Position or Title")
-        elif current_section == "EDUCATION":
-            ap(text, "Section Subheader")
         else:
-            ap(text, "Company")
-            para_count = 0
+            ap(text, "Normal", italic=True)
         continue
 
-    # Partially bold line: **Foo** — rest of line  (e.g. Widener University)
+    # Partially bold line: **Label:** value
     if s.startswith("**") and "**" in s[2:]:
-        text = strip_bold(s)
-        ap(text, "Section Subheader" if current_section == "EDUCATION" else "Normal")
+        ap(clean(s), "Normal")
         continue
 
-    # Italic line: *role title*  — resets paragraph counter
+    # Italic line: *text*
     if re.match(r"^\*[^*]", s) and s.endswith("*"):
         ap(s[1:-1], "Normal", italic=True)
-        para_count = 0
         continue
 
-    # Regular paragraph
-    if current_section == "EXPERIENCE":
-        ap(s, "Normal" if para_count == 0 else "Bullet Points")
-        para_count += 1
-    elif current_section == "EDUCATION":
-        ap(s, "Company")
-    elif current_section == "CERTIFICATIONS":
-        ap(s, "Certifications")
-    elif current_section == "SKILL SETS":
-        ap(s, "Skills")
-    else:
-        ap(s, "Normal")
+    # Table separator: skip
+    if s.startswith("|") and not s.replace("|", "").replace("-", "").replace(" ", ""):
+        continue
+
+    # Table data row → Skills  (only structure that produces tables in the skeleton)
+    if s.startswith("|"):
+        cols = [clean(c.strip()) for c in s.split("|") if c.strip()]
+        text = ": ".join(cols)
+        if text:
+            ap(text, "Skills")
+        continue
+
+    # Bullet item
+    if s.startswith("- "):
+        ap(clean(s[2:]), "Bullet Points")
+        continue
+
+    # Plain text → Normal
+    ap(clean(s), "Normal")
 
 body.append(sect_pr)
 
 doc.save(OUTPUT)
 print(f"Built: {OUTPUT}")
+
