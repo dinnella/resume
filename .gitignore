@@ -1,0 +1,11 @@
+# Build outputs
+*.pdf
+*.docx
+
+
+# Python
+__pycache__/
+.venv/
+
+# LibreOffice lock files
+.~lock.*

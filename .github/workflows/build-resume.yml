@@ -1,0 +1,66 @@
+name: Build Resume
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - resume.md
+      - templates/resume.css
+      - scripts/**
+      - templates/**
+  workflow_dispatch:
+
+jobs:
+  pdf:
+    name: Build PDF
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y pandoc libpango-1.0-0 libpangocairo-1.0-0
+          python3 -m venv .venv
+          source .venv/bin/activate
+          pip install -r requirements.txt
+
+      - name: Build PDF
+        run: bash scripts/makepdf.sh
+
+      - name: Upload PDF artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: resume-pdf
+          path: resume.pdf
+          retention-days: 400
+
+  docx:
+    name: Build DOCX
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y pandoc
+          python3 -m venv .venv
+          source .venv/bin/activate
+          pip install -r requirements.txt
+
+      - name: Build DOCX
+        run: bash scripts/makedocx.sh
+
+      - name: Upload DOCX artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: resume-docx
+          path: resume.docx
+          retention-days: 400

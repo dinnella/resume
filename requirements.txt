@@ -1,0 +1,2 @@
+weasyprint==68.1
+python-docx==1.2.0
