@@ -12,7 +12,7 @@ PDF and DOCX on every push to `main`. Local scripts are provided for offline bui
 | `templates/resume.css` | PDF stylesheet |
 | `scripts/makepdf.sh` | Local + CI PDF build script |
 | `scripts/makedocx.sh` | Local + CI DOCX build script (auto-generates `templates/reference.docx`) |
-| `scripts/build_docx_from_template.py` | Generate Excella-formatted DOCX from Word template |
+| `scripts/build_docx_from_template.py` | Generate Template-aligned DOCX from Word template |
 | `scripts/generate_md_from_template.py` | Generate a markdown skeleton from a Word template (run when template changes) |
 | `scripts/style_reference_docx.py` | Called by `makedocx.sh` — styles the pandoc reference doc |
 | `scripts/postprocess_docx.py` | Called by `makedocx.sh` — centers header block in DOCX output |
@@ -66,7 +66,7 @@ bash scripts/makedocx.sh
 bash scripts/makedocx.sh resume.md MyResume.docx templates/reference.docx
 ```
 
-**4. Build the Excella DOCX** (requires `templates/Excella Resume Template 2026.docx`)
+**4. Build the DOCX** (requires a docx template, e.g. `templates/Excella Resume Template 2026.docx`)
 ```bash
 source .venv/bin/activate
 
