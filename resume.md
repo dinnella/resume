@@ -1,7 +1,8 @@
 # Michael A. Dinnella
 
 **Email:** Dinnella@gmail.com  
-**LinkedIn:** [linkedin.com/in/michael-dinnella](https://www.linkedin.com/in/michael-dinnella)
+**LinkedIn:** [linkedin.com/in/michael-dinnella](https://www.linkedin.com/in/michael-dinnella)  
+**Markdown Version:** [github.com/dinnella/resume](https://github.com/dinnella/resume/blob/main/resume.md)
 
 ---
 
